@@ -1,9 +1,11 @@
 import fs from "fs";
-import { LOG_LEVELS, LogLevel } from "./types";
+import { LogLevel, LOG_LEVELS } from "./types";
+import { LogParser } from "./parsers/LogParser";
 
 interface CleanOptions {
   level: LogLevel;
   context: number;
+  parser: LogParser;
 }
 
 export function cleanLog(
@@ -11,33 +13,30 @@ export function cleanLog(
   options: CleanOptions
 ): string[] {
   const lines = fs.readFileSync(filePath, "utf-8").split("\n");
-  const minLevelIndex = LOG_LEVELS.indexOf(options.level);
+  const entries = lines.map(line => options.parser.parse(line));
 
+  const minIndex = LOG_LEVELS.indexOf(options.level);
   const output: string[] = [];
-  const addedLines = new Set<number>();
+  const added = new Set<number>();
 
-  lines.forEach((line, index) => {
-    const isTrigger = LOG_LEVELS
-      .slice(minLevelIndex)
-      .some((lvl) => line.includes(` ${lvl} `));
+  entries.forEach((entry, index) => {
+    if (!entry.level) return;
 
-    if (!isTrigger) return;
+    if (LOG_LEVELS.indexOf(entry.level) < minIndex) return;
 
     const start = Math.max(0, index - options.context);
-    const end = Math.min(lines.length, index + options.context + 1);
+    const end = Math.min(entries.length, index + options.context + 1);
 
     for (let i = start; i < end; i++) {
-      if (addedLines.has(i)) continue;
+      if (added.has(i)) continue;
 
-      const contextLine = lines[i];
-
-      const allowedContext = LOG_LEVELS
-        .slice(minLevelIndex)
-        .some((lvl) => contextLine.includes(` ${lvl} `));
-
-      if (i === index || allowedContext) {
-        output.push(contextLine);
-        addedLines.add(i);
+      const e = entries[i];
+      if (
+        i === index ||
+        (e.level && LOG_LEVELS.indexOf(e.level) >= minIndex)
+      ) {
+        output.push(e.raw);
+        added.add(i);
       }
     }
 
