@@ -1,62 +1,88 @@
 #!/usr/bin/env node
 
-import { Command } from "commander";
-import chalk from "chalk";
 import fs from "fs";
-import { cleanLog } from "./cleaner";
-import { LOG_LEVELS, LogLevel } from "./types";
-import { AutoParser } from "./parsers/AutoParser";
+import path from "path";
+import { Command } from "commander";
+
+type LogEntry = {
+  raw: string;
+  level: string;
+};
 
 const program = new Command();
 
 program
-  .name("log-clean")
-  .description("Kill noisy logs, keep meaningful ones 🧘‍♀️")
-  .argument("<file>", "log file to clean")
-  .option("-l, --level <level>", "minimum log level", "ERROR")
-  .option("-c, --context <number>", "lines before/after", "0")
-  .option("-o, --output <file>", "output file", "cleaned.log")
-  .parse();
+  .argument("<logfile>", "Log file to clean")
+  .option("--level <level>", "Minimum log level (INFO, WARN, ERROR, FATAL)")
+  .option("--context <lines>", "Number of context lines", "0");
 
-const opts = program.opts();
-const file = program.args[0];
+program.parse();
 
-// ---- validations ----
-if (!fs.existsSync(file)) {
-  console.log(chalk.red(`File not found: ${file}`));
-  process.exit(1);
+const filePath = program.args[0];
+const options = program.opts();
+
+const CONTEXT = Number(options.context || 0);
+const LEVEL = options.level?.toUpperCase();
+
+const LOG_LEVELS = ["DEBUG", "INFO", "WARN", "ERROR", "FATAL"];
+
+function extractLevel(line: string): string {
+  // Common formats: INFO | [INFO] | | Info |
+  const match = line.match(/\b(DEBUG|INFO|WARN|ERROR|FATAL)\b/i);
+  return match ? match[1].toUpperCase() : "UNKNOWN";
 }
 
-const level = opts.level.toUpperCase();
+// 1️⃣ Read file
+const content = fs.readFileSync(filePath, "utf-8");
+const lines = content.split(/\r?\n/);
 
-if (!LOG_LEVELS.includes(level)) {
-  console.log(
-    chalk.red(
-      `Invalid level "${opts.level}". Choose from: ${LOG_LEVELS.join(", ")}`
+// 2️⃣ Parse logs
+const entries: LogEntry[] = lines.map(line => ({
+  raw: line,
+  level: extractLevel(line),
+}));
+
+// 3️⃣ Find matching indexes
+let matchIndexes: number[] = [];
+
+if (LEVEL) {
+  const minIndex = LOG_LEVELS.indexOf(LEVEL);
+
+  matchIndexes = entries
+    .map((e, i) =>
+      LOG_LEVELS.indexOf(e.level) >= minIndex ? i : -1
     )
-  );
-  process.exit(1);
+    .filter(i => i !== -1);
+} else {
+  // no level filter → everything is a match
+  matchIndexes = entries.map((_, i) => i);
 }
 
-const context = Number(opts.context);
-if (isNaN(context) || context < 0) {
-  console.log(chalk.red("Context must be a non-negative number"));
-  process.exit(1);
+// 4️⃣ Collect output with context (LEVEL IGNORED HERE)
+const output = new Set<string>();
+
+for (const index of matchIndexes) {
+  const start = Math.max(0, index - CONTEXT);
+  const end = Math.min(entries.length - 1, index + CONTEXT);
+
+  for (let i = start; i <= end; i++) {
+    output.add(entries[i].raw);
+  }
 }
 
-// ---- parser (auto-detect) ----
-const parser = new AutoParser();
+// 5️⃣ Stats
+const cleanedLines = Array.from(output);
+const header = [
+  `# Log Cleaner Summary`,
+  `# Level filter: ${LEVEL ?? "NONE"}`,
+  `# Context lines: ${CONTEXT}`,
+  `# Matched entries: ${matchIndexes.length}`,
+  `# Output lines: ${cleanedLines.length}`,
+  ``,
+].join("\n");
 
-// ---- clean ----
-const cleaned = cleanLog(file, {
-  level: level as LogLevel,
-  context,
-  parser
-});
+// 6️⃣ Write output
+const outputFile = "cleaned.log";
+fs.writeFileSync(outputFile, header + cleanedLines.join("\n"));
 
-// ---- write output ----
-fs.writeFileSync(opts.output, cleaned.join("\n"));
-
-console.log(
-  chalk.green(`✔ Clean log written to ${opts.output}`)
-);
+console.log(`✔ Cleaned log written to ${outputFile}`);
