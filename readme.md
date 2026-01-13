@@ -1,8 +1,6 @@
 # CLI Log Cleaner 🧹
 
-A small but powerful **TypeScript-based CLI tool** to clean noisy log files and keep only meaningful entries.
-
-Designed with **QA engineers** in mind: simple usage, multiple log formats, and sane defaults for real-world debugging.
+A lightweight **TypeScript-based CLI tool** to clean noisy log files and keep only meaningful entries. Simple usage, multiple log formats, and sane defaults for real-world debugging.
 
 ---
 
