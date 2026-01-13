@@ -47,7 +47,7 @@ npm run dev -- your.log -- --level ERROR --context 1
 npm run build
 ```
 
-### (Optional) Link as global CLI
+### Link as global CLI
 
 ```bash
 npm link
@@ -156,51 +156,6 @@ Log Parsers
 - Cleaner logic is **independent of log format**
 - Parsers are **extensible and isolated**
 
----
-
-## 🧑‍💻 Development
-
-```bash
-npm run dev
-npm run build
-```
-
-Project structure:
-
-```text
-src/
-├─ index.ts        # CLI entry point
-├─ cleaner.ts      # Core filtering logic
-├─ logEntry.ts     # Shared log model
-├─ types.ts        # Log levels & enums
-└─ parsers/
-   ├─ AutoParser.ts
-   ├─ SimpleParser.ts
-   ├─ PipeParser.ts
-   └─ LogParser.ts
-```
-
----
-
-## 🔮 Possible Enhancements
-
-- `--match exact | at-least`
-- JSON log support
-- Colored output by log level
-- Summary statistics (`ERROR: 12`, `WARN: 3`)
-- Streaming mode for very large files
-
----
-
-## 🤝 Contributing
-
-Feel free to open issues or PRs. This tool was built to solve **real QA pain points** and is meant to grow.
-
----
-
-## 📄 License
-
-MIT
 
 ---
 
