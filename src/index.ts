@@ -14,7 +14,8 @@ const program = new Command();
 program
   .argument("<logfile>", "Log file to clean")
   .option("--level <level>", "Minimum log level (INFO, WARN, ERROR, FATAL)")
-  .option("--context <lines>", "Number of context lines", "0");
+  .option("--context <lines>", "Number of context lines", "0")
+  .option("--output <file>", "Output file name");
 
 program.parse();
 
@@ -82,7 +83,11 @@ const header = [
 ].join("\n");
 
 // 6️⃣ Write output
-const outputFile = "cleaned.log";
+const outputFile =
+  options.output ??
+  "cleaned.log";
+
 fs.writeFileSync(outputFile, header + cleanedLines.join("\n"));
+
 
 console.log(`✔ Cleaned log written to ${outputFile}`);
